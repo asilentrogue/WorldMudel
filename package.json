@@ -10,7 +10,10 @@
   },
   "license": "MIT",
   "scripts": {
-    "start": "node ./ranvier -v",
+    "dev": "node ./ranvier -v -p 3000",
+    "start": "node ./ranvier -v -p 3000",
+    "build": "node ./util/verify-build.js",
+    "lint": "node ./util/verify-build.js",
     "init": "node ./util/init-bundles.js",
     "update-bundle-remote": "node ./util/update-bundle-url.js",
     "remove-bundle": "node ./util/remove-bundle.js",
@@ -25,7 +28,8 @@
     "sprintf-js": "^1.0.3",
     "sty": "",
     "uuid": "^3.3.2",
-    "winston": "^2.4.4"
+    "winston": "^2.4.4",
+    "ws": "^8.22.1"
   },
   "devDependencies": {
     "git-url-parse": "^11.1.2"

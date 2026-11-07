@@ -1,0 +1,115 @@
+- id: archivist_veyra
+  name: "Archivist Veyra"
+  keywords: ["archivist", "veyra", "guide"]
+  level: 10
+  description: >-
+    Draped in indigo stargazer robes, Archivist Veyra oversees new arrivals in the
+    White Sanctum and assigns expeditions across Limbo.
+  quests:
+    - "limbo:1"
+    - "limbo:2"
+  attributes:
+    health: 500
+    energy: 300
+    strength: 20
+    stamina: 25
+  metadata:
+    dialogue: "Welcome to the Sanctum, adventurer! Type 'quest list' to view available missions, or 'quest start 1' to begin your trial."
+
+- id: sentinel_vanguard
+  name: "Sentinel Thorne"
+  keywords: ["sentinel", "thorne", "guard", "vanguard"]
+  level: 5
+  description: >-
+    A stoic guardian clad in obsidian plate, keeping watch over the courtyard crossroads.
+  attributes:
+    health: 260
+    energy: 120
+    strength: 18
+    stamina: 18
+  metadata:
+    dialogue: "The Training Grounds lie east, the Armory is west, and the Catacombs descend below."
+
+- id: sergeant_kael
+  name: "Master-at-Arms Kael"
+  keywords: ["sergeant", "kael", "master", "trainer"]
+  level: 8
+  description: >-
+    A scarred veteran instructor who drills recruits in blade work and tactical combat skills.
+  attributes:
+    health: 380
+    energy: 200
+    strength: 24
+    stamina: 22
+  metadata:
+    dialogue: "Grab that Tempered Training Longsword ('get sword', then 'equip sword') and test your mettle against the Training Automaton ('attack automaton' or 'cleave automaton')!"
+
+- id: training_automaton
+  name: "Clockwork Training Automaton"
+  keywords: ["automaton", "clockwork", "construct", "dummy", "training"]
+  level: 1
+  description: >-
+    A brass-and-iron sparring construct powered by a spinning aether core. Designed
+    for live combat calibration.
+  behaviors:
+    combat: true
+  items:
+    - "limbo:healing_draught"
+  attributes:
+    health: 75
+    energy: 80
+    strength: 9
+    stamina: 8
+    armor: 2
+  metadata:
+    hostile: false
+    dialogue: "BZZT-CLICK. Combat calibration matrix ready. Engage when prepared."
+
+- id: quartermaster_orin
+  name: "Quartermaster Orin"
+  keywords: ["quartermaster", "orin", "smith", "armorer"]
+  level: 7
+  description: >-
+    A broad-shouldered dwarf tending the ether-forge and maintaining the Sanctum's armory.
+  attributes:
+    health: 320
+    energy: 150
+    strength: 22
+    stamina: 20
+  metadata:
+    dialogue: "Help yourself to a Sanctum Kite Shield or Vanguard Chain Hauberk before descending into the Catacombs!"
+
+- id: chronicler_sol
+  name: "Chronicler Sol"
+  keywords: ["chronicler", "sol", "scholar", "sage"]
+  level: 9
+  description: >-
+    keeper of the Astral Archive, studying the realtime state synchronization of the realm.
+  attributes:
+    health: 300
+    energy: 400
+    intellect: 30
+  metadata:
+    dialogue: "Use the Codex of the Ranvier Architects ('get codex', 'use codex') to attune your mind with arcane insight."
+
+- id: void_stalker
+  name: "Abyssal Void Stalker"
+  keywords: ["void", "stalker", "abyssal", "fiend", "shadow"]
+  level: 2
+  description: >-
+    A predatory entity of coalesced shadow and crackling violet lightning prowling
+    among the shattered sarcophagi.
+  behaviors:
+    combat: true
+  items:
+    - "limbo:void_shard"
+    - "limbo:healing_draught"
+  attributes:
+    health: 120
+    energy: 100
+    strength: 13
+    stamina: 12
+    armor: 4
+  metadata:
+    hostile: true
+    dialogue: "The creature hisses with resonant static from beyond the rift."

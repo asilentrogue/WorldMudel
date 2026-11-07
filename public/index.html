@@ -1,0 +1,1046 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RanvierMUD Engine &amp; Web Client</title>
+  <meta name="description" content="Node.js-based multiplayer MUD game engine refactored with a real-time WebSocket transport layer, interactive web client, and modern architecture inspector on port 3000." />
+  <meta property="og:title" content="RanvierMUD Engine &amp; Web Client" />
+  <meta property="og:description" content="Node.js-based multiplayer MUD game engine refactored with a real-time WebSocket transport layer, interactive web client, and modern architecture inspector on port 3000." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Plus+Jakarta+Sans:wght@400;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+      background-color: #0B1120;
+      color: #F1F5F9;
+    }
+    .tabular-nums {
+      font-variant-numeric: tabular-nums;
+    }
+    .terminal-scroll::-webkit-scrollbar {
+      width: 6px;
+    }
+    .terminal-scroll::-webkit-scrollbar-track {
+      background: #090D16;
+    }
+    .terminal-scroll::-webkit-scrollbar-thumb {
+      background: #1E293B;
+      border-radius: 3px;
+    }
+    .ansi-bold { font-weight: 600; }
+    .ansi-red { color: #F87171; }
+    .ansi-green { color: #34D399; }
+    .ansi-yellow { color: #FBBF24; }
+    .ansi-blue { color: #60A5FA; }
+    .ansi-magenta { color: #C084FC; }
+    .ansi-cyan { color: #22D3EE; }
+    .ansi-white { color: #F8FAFC; }
+  </style>
+</head>
+<body class="min-h-screen bg-[#0B1120] text-slate-100 flex flex-col selection:bg-amber-500/30 selection:text-amber-200">
+
+  <!-- Top Bar Contract: 3 zones separated by gap-8 -->
+  <header class="flex items-center justify-between gap-8 px-6 py-3.5 border-b border-slate-800/80 bg-[#0F172A]">
+    <a href="#play" onclick="switchTab('play'); return false;" class="text-lg font-bold tracking-tight text-slate-100 whitespace-nowrap shrink-0">
+      RanvierMUD Engine
+    </a>
+
+    <nav class="flex items-center gap-6 text-sm font-medium text-slate-400 overflow-x-auto">
+      <a href="#play" id="nav-play" onclick="switchTab('play'); return false;" class="text-amber-400 underline underline-offset-8 decoration-2 whitespace-nowrap shrink-0 transition-colors">
+        Live MUD Client
+      </a>
+      <a href="#world" id="nav-world" onclick="switchTab('world'); return false;" class="hover:text-slate-100 whitespace-nowrap shrink-0 transition-colors">
+        World Atlas
+      </a>
+      <a href="#diagnostic" id="nav-diagnostic" onclick="switchTab('diagnostic'); return false;" class="hover:text-slate-100 whitespace-nowrap shrink-0 transition-colors">
+        Codebase Diagnostic
+      </a>
+      <a href="#architecture" id="nav-architecture" onclick="switchTab('architecture'); return false;" class="hover:text-slate-100 whitespace-nowrap shrink-0 transition-colors">
+        Refactoring Blueprint
+      </a>
+    </nav>
+
+    <div class="flex items-center gap-3 shrink-0">
+      <button onclick="openAccountModal()" class="px-4 py-2 text-xs font-semibold text-slate-950 bg-amber-400 hover:bg-amber-300 rounded-lg transition-colors whitespace-nowrap shrink-0">
+        Switch Character
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Workspace Container -->
+  <main class="flex-1 max-w-[1440px] w-full mx-auto px-6 py-5 flex flex-col">
+
+    <!-- VIEW 1: LIVE MUD CLIENT & HUD -->
+    <section id="view-play" class="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+
+      <!-- Left / Center Column: Terminal + Contextual Room Bar + Command Input (7 cols) -->
+      <div class="lg:col-span-7 flex flex-col bg-[#090D16] border border-slate-800 rounded-xl overflow-hidden min-h-[640px]">
+
+        <!-- Subheader bar inside terminal -->
+        <div class="flex flex-wrap items-center justify-between gap-4 px-4 py-2.5 bg-slate-900/90 border-b border-slate-800 text-xs text-slate-400">
+          <div class="flex items-center gap-2">
+            <span id="conn-status-label" class="font-medium text-emerald-400">WebSocket Connected</span>
+            <span aria-hidden="true">·</span>
+            <span id="header-room-title" class="text-slate-200 font-medium">The White Sanctum of Limbo</span>
+            <span aria-hidden="true">·</span>
+            <span id="header-coords" class="font-mono tabular-nums text-slate-400">[0, 0, 0]</span>
+          </div>
+          <div class="flex items-center gap-2 font-mono tabular-nums">
+            <span>Tick: 100ms</span>
+            <span aria-hidden="true">·</span>
+            <span id="online-count-label">1 Player Online</span>
+          </div>
+        </div>
+
+        <!-- Contextual Interactive Entities Bar (NPCs & Items in Current Room) -->
+        <div class="px-4 py-2.5 bg-slate-900/40 border-b border-slate-800/80 flex flex-wrap items-center justify-between gap-3">
+          <div id="room-entities-bar" class="flex flex-wrap items-center gap-2 text-xs">
+            <span class="text-slate-400">Room interactions loading...</span>
+          </div>
+          <div class="flex items-center gap-1.5 shrink-0">
+            <button onclick="sendCmd('look')" class="px-2.5 py-1 text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 rounded transition-colors whitespace-nowrap shrink-0">
+              Look
+            </button>
+            <button onclick="sendCmd('get all')" class="px-2.5 py-1 text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 rounded transition-colors whitespace-nowrap shrink-0">
+              Loot All
+            </button>
+            <button onclick="sendCmd('cleave')" class="px-2.5 py-1 text-xs font-medium bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 rounded transition-colors whitespace-nowrap shrink-0">
+              Cleave (20 EN)
+            </button>
+            <button onclick="sendCmd('mend')" class="px-2.5 py-1 text-xs font-medium bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/30 rounded transition-colors whitespace-nowrap shrink-0">
+              Astral Mend (25 EN)
+            </button>
+            <button onclick="sendCmd('recall')" class="px-2.5 py-1 text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 rounded transition-colors whitespace-nowrap shrink-0">
+              Recall
+            </button>
+          </div>
+        </div>
+
+        <!-- Terminal Output Stream -->
+        <div id="terminal-output" class="flex-1 p-4 font-mono text-[13px] leading-relaxed overflow-y-auto terminal-scroll space-y-1 max-h-[460px]">
+          <div class="text-slate-400">Connecting to RanvierMUD WebSocket transport on port 3000...</div>
+        </div>
+
+        <!-- Quick Command Bar -->
+        <div class="px-4 py-2 bg-slate-900/60 border-t border-slate-800/80 flex flex-wrap items-center gap-1.5 text-xs">
+          <span class="text-slate-400 mr-1">Quick:</span>
+          <button onclick="sendCmd('quest list')" class="px-2.5 py-1 bg-slate-800/90 hover:bg-slate-700 text-slate-200 rounded transition-colors whitespace-nowrap shrink-0">Quest List</button>
+          <button onclick="sendCmd('quest start 1')" class="px-2.5 py-1 bg-slate-800/90 hover:bg-slate-700 text-slate-200 rounded transition-colors whitespace-nowrap shrink-0">Start Quest 1</button>
+          <button onclick="sendCmd('quest start 2')" class="px-2.5 py-1 bg-slate-800/90 hover:bg-slate-700 text-slate-200 rounded transition-colors whitespace-nowrap shrink-0">Start Quest 2</button>
+          <button onclick="sendCmd('quest complete 1')" class="px-2.5 py-1 bg-slate-800/90 hover:bg-slate-700 text-slate-200 rounded transition-colors whitespace-nowrap shrink-0">Complete Q1</button>
+          <button onclick="sendCmd('quest complete 2')" class="px-2.5 py-1 bg-slate-800/90 hover:bg-slate-700 text-slate-200 rounded transition-colors whitespace-nowrap shrink-0">Complete Q2</button>
+          <button onclick="sendCmd('score')" class="px-2.5 py-1 bg-slate-800/90 hover:bg-slate-700 text-slate-200 rounded transition-colors whitespace-nowrap shrink-0">Score</button>
+          <button onclick="sendCmd('who')" class="px-2.5 py-1 bg-slate-800/90 hover:bg-slate-700 text-slate-200 rounded transition-colors whitespace-nowrap shrink-0">Who</button>
+          <button onclick="sendCmd('help')" class="px-2.5 py-1 bg-slate-800/90 hover:bg-slate-700 text-slate-200 rounded transition-colors whitespace-nowrap shrink-0">Help</button>
+        </div>
+
+        <!-- Command Input Form -->
+        <form id="command-form" onsubmit="handleCommandSubmit(event)" class="flex items-center gap-2 p-3 bg-slate-900 border-t border-slate-800">
+          <span class="font-mono text-amber-400 font-semibold pl-1">&gt;</span>
+          <input
+            id="command-input"
+            type="text"
+            autocomplete="off"
+            placeholder="Enter MUD command (look, north, get sword, equip sword, attack automaton, quest list, chat hello)..."
+            class="flex-1 bg-transparent text-sm font-mono text-slate-100 placeholder-slate-500 focus:outline-none"
+          />
+          <button type="submit" class="px-4 py-2 text-xs font-semibold bg-amber-400 hover:bg-amber-300 text-slate-950 rounded-lg transition-colors whitespace-nowrap shrink-0">
+            Send Command
+          </button>
+        </form>
+      </div>
+
+      <!-- Right Column: Live Character HUD, Coordinate Map & Inventory/Quests (5 cols) -->
+      <div class="lg:col-span-5 flex flex-col gap-5">
+
+        <!-- Character Vitals & Attributes Panel -->
+        <div class="bg-[#0F172A] border border-slate-800 rounded-xl p-5 space-y-4">
+          <div class="flex items-center justify-between gap-4">
+            <div>
+              <h2 id="hud-player-name" class="text-base font-bold text-slate-100">Admin</h2>
+              <p id="hud-player-meta" class="text-xs text-slate-400">
+                Level 1 Warrior · Role: Admin · Sanctum of Limbo
+              </p>
+            </div>
+            <div id="hud-combat-state" class="text-xs font-medium text-emerald-400 tabular-nums">
+              Status: Ready
+            </div>
+          </div>
+
+          <!-- Vitals Bars -->
+          <div class="space-y-3">
+            <div>
+              <div class="flex justify-between text-xs mb-1">
+                <span class="text-slate-300 font-medium">Health Points (HP)</span>
+                <span id="hud-hp-text" class="font-mono tabular-nums text-emerald-400 font-semibold">154 / 154</span>
+              </div>
+              <div class="w-full h-2.5 bg-slate-800 rounded-full overflow-hidden">
+                <div id="hud-hp-bar" class="h-full bg-emerald-500 transition-all duration-150" style="width: 100%"></div>
+              </div>
+            </div>
+
+            <div>
+              <div class="flex justify-between text-xs mb-1">
+                <span class="text-slate-300 font-medium">Arcane Energy (EN)</span>
+                <span id="hud-en-text" class="font-mono tabular-nums text-cyan-400 font-semibold">100 / 100</span>
+              </div>
+              <div class="w-full h-2.5 bg-slate-800 rounded-full overflow-hidden">
+                <div id="hud-en-bar" class="h-full bg-cyan-400 transition-all duration-150" style="width: 100%"></div>
+              </div>
+            </div>
+
+            <div>
+              <div class="flex justify-between text-xs mb-1">
+                <span class="text-slate-300 font-medium">Experience Progress</span>
+                <span id="hud-xp-text" class="font-mono tabular-nums text-amber-400 font-semibold">0 / 100 XP</span>
+              </div>
+              <div class="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+                <div id="hud-xp-bar" class="h-full bg-amber-400 transition-all duration-150" style="width: 0%"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 6-Attribute Tabular Grid -->
+          <div class="grid grid-cols-3 sm:grid-cols-6 gap-2 pt-2 border-t border-slate-800/80 text-center">
+            <div class="p-2 bg-slate-900/70 rounded-lg">
+              <div class="text-[11px] text-slate-400">STR</div>
+              <div id="stat-str" class="text-sm font-mono font-semibold tabular-nums text-slate-100">17</div>
+            </div>
+            <div class="p-2 bg-slate-900/70 rounded-lg">
+              <div class="text-[11px] text-slate-400">AGI</div>
+              <div id="stat-agi" class="text-sm font-mono font-semibold tabular-nums text-slate-100">10</div>
+            </div>
+            <div class="p-2 bg-slate-900/70 rounded-lg">
+              <div class="text-[11px] text-slate-400">INT</div>
+              <div id="stat-int" class="text-sm font-mono font-semibold tabular-nums text-slate-100">8</div>
+            </div>
+            <div class="p-2 bg-slate-900/70 rounded-lg">
+              <div class="text-[11px] text-slate-400">STA</div>
+              <div id="stat-sta" class="text-sm font-mono font-semibold tabular-nums text-slate-100">11</div>
+            </div>
+            <div class="p-2 bg-slate-900/70 rounded-lg">
+              <div class="text-[11px] text-slate-400">ARM</div>
+              <div id="stat-arm" class="text-sm font-mono font-semibold tabular-nums text-amber-400">0</div>
+            </div>
+            <div class="p-2 bg-slate-900/70 rounded-lg">
+              <div class="text-[11px] text-slate-400">CRIT</div>
+              <div id="stat-crit" class="text-sm font-mono font-semibold tabular-nums text-slate-100">5%</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Coordinate Room Minimap & Navigation Pad -->
+        <div class="bg-[#0F172A] border border-slate-800 rounded-xl p-5 space-y-4">
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="text-sm font-bold text-slate-100">Sanctum Coordinate Map &amp; Navigation</h3>
+              <p class="text-xs text-slate-400">Click any adjacent direction or room node to travel</p>
+            </div>
+            <span id="map-z-indicator" class="text-xs font-mono tabular-nums text-slate-400">Elevation Z: 0</span>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-12 gap-4 items-center">
+            <!-- Visual 2D Room Map -->
+            <div id="minimap-grid" class="sm:col-span-7 bg-[#090D16] border border-slate-800/90 rounded-lg p-3 grid grid-cols-3 gap-2 text-center text-xs">
+              <!-- Populated dynamically by renderMinimap() -->
+            </div>
+
+            <!-- Directional Compass Controls -->
+            <div class="sm:col-span-5 flex flex-col items-center justify-center gap-1.5">
+              <div class="grid grid-cols-3 gap-1.5 w-full max-w-[180px]">
+                <button onclick="sendCmd('up')" id="btn-dir-up" class="px-2 py-2 text-xs font-mono font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition-colors whitespace-nowrap shrink-0">
+                  UP
+                </button>
+                <button onclick="sendCmd('north')" id="btn-dir-north" class="px-2 py-2 text-xs font-mono font-semibold bg-slate-800 hover:bg-amber-400 hover:text-slate-950 text-slate-100 rounded-lg transition-colors whitespace-nowrap shrink-0">
+                  N
+                </button>
+                <button onclick="sendCmd('down')" id="btn-dir-down" class="px-2 py-2 text-xs font-mono font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition-colors whitespace-nowrap shrink-0">
+                  DN
+                </button>
+
+                <button onclick="sendCmd('west')" id="btn-dir-west" class="px-2 py-2 text-xs font-mono font-semibold bg-slate-800 hover:bg-amber-400 hover:text-slate-950 text-slate-100 rounded-lg transition-colors whitespace-nowrap shrink-0">
+                  W
+                </button>
+                <button onclick="sendCmd('look')" class="px-2 py-2 text-xs font-mono font-semibold bg-slate-900 border border-slate-700 text-amber-400 rounded-lg transition-colors whitespace-nowrap shrink-0">
+                  LOOK
+                </button>
+                <button onclick="sendCmd('east')" id="btn-dir-east" class="px-2 py-2 text-xs font-mono font-semibold bg-slate-800 hover:bg-amber-400 hover:text-slate-950 text-slate-100 rounded-lg transition-colors whitespace-nowrap shrink-0">
+                  E
+                </button>
+
+                <div></div>
+                <button onclick="sendCmd('south')" id="btn-dir-south" class="px-2 py-2 text-xs font-mono font-semibold bg-slate-800 hover:bg-amber-400 hover:text-slate-950 text-slate-100 rounded-lg transition-colors whitespace-nowrap shrink-0">
+                  S
+                </button>
+                <div></div>
+              </div>
+              <div id="exits-summary" class="text-[11px] text-slate-400 text-center pt-1">
+                Exits: north, up
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tabbed Inventory, Equipment & Quests Panel -->
+        <div class="bg-[#0F172A] border border-slate-800 rounded-xl p-5 flex-1 flex flex-col space-y-3">
+          <div class="flex items-center gap-1 p-1 bg-slate-900 rounded-lg w-fit">
+            <button onclick="switchHudSubtab('inventory')" id="subtab-inventory" class="px-3 py-1.5 text-xs font-semibold rounded-md bg-slate-800 text-slate-100 transition-colors whitespace-nowrap shrink-0">
+              Inventory &amp; Gear
+            </button>
+            <button onclick="switchHudSubtab('quests')" id="subtab-quests" class="px-3 py-1.5 text-xs font-semibold rounded-md text-slate-400 hover:text-slate-200 transition-colors whitespace-nowrap shrink-0">
+              Quests
+            </button>
+            <button onclick="switchHudSubtab('players')" id="subtab-players" class="px-3 py-1.5 text-xs font-semibold rounded-md text-slate-400 hover:text-slate-200 transition-colors whitespace-nowrap shrink-0">
+              Party &amp; Online
+            </button>
+          </div>
+
+          <!-- Subview: Inventory & Equipment -->
+          <div id="subview-inventory" class="space-y-3 text-xs flex-1">
+            <div>
+              <div class="text-slate-400 font-medium mb-1.5">Equipped Slots</div>
+              <div id="hud-equipment-list" class="space-y-1.5">
+                <div class="text-slate-500">No weapons or armor equipped.</div>
+              </div>
+            </div>
+            <div class="pt-2 border-t border-slate-800/80">
+              <div class="flex justify-between text-slate-400 font-medium mb-1.5">
+                <span>Carried Items</span>
+                <span id="hud-inv-count" class="font-mono tabular-nums">0 / 16</span>
+              </div>
+              <div id="hud-inventory-list" class="space-y-1.5">
+                <div class="text-slate-500">Your backpack is empty. Pick up items from the room.</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Subview: Quests -->
+          <div id="subview-quests" class="hidden space-y-2.5 text-xs flex-1">
+            <div id="hud-quests-list" class="space-y-2">
+              <div class="text-slate-400">No active quests. Click "Start Quest 1" in the White Sanctum!</div>
+            </div>
+          </div>
+
+          <!-- Subview: Online Adventurers -->
+          <div id="subview-players" class="hidden space-y-2 text-xs flex-1">
+            <div id="hud-online-list" class="space-y-1.5"></div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- VIEW 2: WORLD ATLAS & ENTITIES -->
+    <section id="view-world" class="hidden space-y-6">
+      <div class="flex flex-wrap items-end justify-between gap-4 border-b border-slate-800 pb-4">
+        <div>
+          <h1 class="text-2xl font-bold text-slate-100">The Sanctum of Limbo — World Atlas</h1>
+          <p class="text-sm text-slate-400 mt-1">
+            Live inspection of all rooms, coordinates, NPCs, items, and quests hydrated by Ranvier's BundleManager.
+          </p>
+        </div>
+        <button onclick="refreshEngineStatus()" class="px-4 py-2 text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-100 rounded-lg transition-colors whitespace-nowrap shrink-0">
+          Refresh World State
+        </button>
+      </div>
+
+      <div id="world-rooms-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        <!-- Populated from /api/status -->
+      </div>
+    </section>
+
+    <!-- VIEW 3: CODEBASE DIAGNOSTIC -->
+    <section id="view-diagnostic" class="hidden space-y-6">
+      <div class="border-b border-slate-800 pb-4">
+        <h1 class="text-2xl font-bold text-slate-100">Codebase Review &amp; Runtime Readiness Audit</h1>
+        <p class="text-sm text-slate-400 mt-1">
+          Analysis of what was required to make RanvierMUD runnable and how the core engine subsystems are currently operating.
+        </p>
+      </div>
+
+      <!-- Live Engine Telemetry Strip -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3" id="diagnostic-metrics">
+        <div class="p-4 bg-[#0F172A] border border-slate-800 rounded-xl">
+          <div class="text-xs text-slate-400">Engine Core</div>
+          <div class="text-lg font-mono font-bold tabular-nums text-amber-400 mt-1">v3.0.5</div>
+        </div>
+        <div class="p-4 bg-[#0F172A] border border-slate-800 rounded-xl">
+          <div class="text-xs text-slate-400">Listen Port</div>
+          <div class="text-lg font-mono font-bold tabular-nums text-emerald-400 mt-1">3000</div>
+        </div>
+        <div class="p-4 bg-[#0F172A] border border-slate-800 rounded-xl">
+          <div class="text-xs text-slate-400">Areas Hydrated</div>
+          <div id="metric-areas" class="text-lg font-mono font-bold tabular-nums text-slate-100 mt-1">1</div>
+        </div>
+        <div class="p-4 bg-[#0F172A] border border-slate-800 rounded-xl">
+          <div class="text-xs text-slate-400">Rooms</div>
+          <div id="metric-rooms" class="text-lg font-mono font-bold tabular-nums text-slate-100 mt-1">7</div>
+        </div>
+        <div class="p-4 bg-[#0F172A] border border-slate-800 rounded-xl">
+          <div class="text-xs text-slate-400">Spawned NPCs</div>
+          <div id="metric-npcs" class="text-lg font-mono font-bold tabular-nums text-slate-100 mt-1">7</div>
+        </div>
+        <div class="p-4 bg-[#0F172A] border border-slate-800 rounded-xl">
+          <div class="text-xs text-slate-400">Active Items</div>
+          <div id="metric-items" class="text-lg font-mono font-bold tabular-nums text-slate-100 mt-1">7</div>
+        </div>
+        <div class="p-4 bg-[#0F172A] border border-slate-800 rounded-xl">
+          <div class="text-xs text-slate-400">Commands</div>
+          <div id="metric-commands" class="text-lg font-mono font-bold tabular-nums text-slate-100 mt-1">18</div>
+        </div>
+        <div class="p-4 bg-[#0F172A] border border-slate-800 rounded-xl">
+          <div class="text-xs text-slate-400">Channels</div>
+          <div id="metric-channels" class="text-lg font-mono font-bold tabular-nums text-slate-100 mt-1">5</div>
+        </div>
+      </div>
+
+      <!-- Root Blockers Resolved -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        <div class="bg-[#0F172A] border border-slate-800 rounded-xl p-5 space-y-2.5">
+          <div class="text-xs font-mono text-amber-400">01. Process &amp; Network Binding</div>
+          <h3 class="text-base font-bold text-slate-100">Missing Dev Script &amp; Telnet Port 4000</h3>
+          <p class="text-xs text-slate-400 leading-relaxed">
+            The original <code class="text-slate-200 font-mono">package.json</code> only provided <code class="text-slate-200 font-mono">"start": "node ./ranvier -v"</code> with no <code class="text-slate-200 font-mono">"dev"</code> or <code class="text-slate-200 font-mono">"build"</code> scripts, and <code class="text-slate-200 font-mono">ranvier.json</code> targeted raw TCP Telnet on port 4000.
+          </p>
+          <p class="text-xs text-emerald-400 pt-1">
+            Resolved: Wired <code class="font-mono">npm run dev</code> to launch Ranvier on <code class="font-mono">0.0.0.0:3000</code> with a multiplexed HTTP + WebSocket server event listener.
+          </p>
+        </div>
+
+        <div class="bg-[#0F172A] border border-slate-800 rounded-xl p-5 space-y-2.5">
+          <div class="text-xs font-mono text-amber-400">02. Uninitialized Git Submodule Bundles</div>
+          <h3 class="text-base font-bold text-slate-100">Empty /bundles Directory</h3>
+          <p class="text-xs text-slate-400 leading-relaxed">
+            Ranvier's core engine is unopinionated and delegates all game content, networking, attributes, commands, and quests to bundles. Because <code class="text-slate-200 font-mono">"bundles": []</code> was empty, the server exited immediately without opening a socket.
+          </p>
+          <p class="text-xs text-emerald-400 pt-1">
+            Resolved: Built the self-contained <code class="font-mono">bundles/ranvier-core</code> bundle with areas, NPCs, items, quests, skills, effects, commands, and channels.
+          </p>
+        </div>
+
+        <div class="bg-[#0F172A] border border-slate-800 rounded-xl p-5 space-y-2.5">
+          <div class="text-xs font-mono text-amber-400">03. Player Hydration &amp; Attribute Contracts</div>
+          <h3 class="text-base font-bold text-slate-100">Admin.json Schema Compatibility</h3>
+          <p class="text-xs text-slate-400 leading-relaxed">
+            The seed character <code class="text-slate-200 font-mono">data/player/Admin.json</code> references room <code class="text-slate-200 font-mono">limbo:white</code> and 8 specific attributes (<code class="text-slate-200 font-mono">strength, agility, intellect, stamina, health, armor, energy, critical</code>). Missing any attribute throws a fatal <code class="text-slate-200 font-mono">Character.hydrate()</code> error.
+          </p>
+          <p class="text-xs text-emerald-400 pt-1">
+            Resolved: Registered all 8 attributes with computed formulas in <code class="font-mono">attributes.js</code> and hydrated <code class="font-mono">limbo:white</code>.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW 4: MODERNIZATION & REFACTORING BLUEPRINT -->
+    <section id="view-architecture" class="hidden space-y-6">
+      <div class="border-b border-slate-800 pb-4">
+        <h1 class="text-2xl font-bold text-slate-100">Modernization &amp; Refactoring Architecture</h1>
+        <p class="text-sm text-slate-400 mt-1">
+          How to refactor RanvierMUD’s Authentication, Database Persistence, and Realtime Multiplayer layers while preserving its event-driven bundle architecture.
+        </p>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Pillar 1: Authentication -->
+        <div class="bg-[#0F172A] border border-slate-800 rounded-xl p-6 space-y-4 flex flex-col">
+          <div class="text-xs font-mono text-amber-400">01. Authentication Refactoring</div>
+          <h2 class="text-lg font-bold text-slate-100">From Terminal Prompts to OAuth2 / Firebase Auth</h2>
+          <div class="text-xs text-slate-400 space-y-2 leading-relaxed">
+            <p><strong class="text-slate-200">Original Design:</strong> Sequential <code class="font-mono">input-events/</code> state machine prompting for username &amp; plaintext password over Telnet, verified via synchronous <code class="font-mono">bcryptjs.compareSync()</code> against local JSON files.</p>
+            <p><strong class="text-slate-200">Modern Refactoring:</strong> Authenticate users in the web client via <strong>Firebase Authentication</strong> (Google OAuth, GitHub, Email/Password) and pass the signed ID token during the WebSocket handshake.</p>
+          </div>
+          <pre class="bg-[#090D16] border border-slate-800 rounded-lg p-3 text-[11px] font-mono text-slate-300 overflow-x-auto flex-1"><code>// WebSocket Upgrade Token Verification
+wss.on('connection', async (ws, req) => {
+  const token = extractBearerToken(req);
+  const decoded = await admin.auth().verifyIdToken(token);
+  const account = await state.AccountManager
+    .loadAccount(decoded.uid);
+  const player = await state.PlayerManager
+    .loadPlayer(state, account, decoded.name);
+  player.hydrate(state);
+});</code></pre>
+        </div>
+
+        <!-- Pillar 2: Database Layer -->
+        <div class="bg-[#0F172A] border border-slate-800 rounded-xl p-6 space-y-4 flex flex-col">
+          <div class="text-xs font-mono text-cyan-400">02. Database &amp; EntityLoader Refactoring</div>
+          <h2 class="text-lg font-bold text-slate-100">Custom Firestore / PostgreSQL DataSource</h2>
+          <div class="text-xs text-slate-400 space-y-2 leading-relaxed">
+            <p><strong class="text-slate-200">Original Design:</strong> <code class="font-mono">ranvier-datasource-file</code> writes synchronous JSON files to <code class="font-mono">data/account/</code> and <code class="font-mono">data/player/</code>, which risks race conditions and data loss on ephemeral cloud containers.</p>
+            <p><strong class="text-slate-200">Modern Refactoring:</strong> Implement a custom Ranvier <code class="font-mono">DataSource</code> in <code class="font-mono">ranvier.json</code> backed by <strong>Cloud Firestore</strong> (for document-native <code class="font-mono">Player.serialize()</code> trees) or <strong>Cloud SQL PostgreSQL</strong> (<code class="font-mono">JSONB</code> columns).</p>
+          </div>
+          <pre class="bg-[#090D16] border border-slate-800 rounded-lg p-3 text-[11px] font-mono text-slate-300 overflow-x-auto flex-1"><code>// FirestoreDataSource for Ranvier EntityLoaderRegistry
+class FirestoreDataSource {
+  async fetch(config, id) {
+    const snap = await db.collection(config.collection)
+      .doc(id.toLowerCase()).get();
+    return snap.exists ? snap.data() : null;
+  }
+  async update(config, id, data) {
+    await db.collection(config.collection)
+      .doc(id.toLowerCase())
+      .set(data, { merge: true });
+  }
+}</code></pre>
+        </div>
+
+        <!-- Pillar 3: Realtime Multiplayer -->
+        <div class="bg-[#0F172A] border border-slate-800 rounded-xl p-6 space-y-4 flex flex-col">
+          <div class="text-xs font-mono text-emerald-400">03. Realtime Multiplayer Transport</div>
+          <h2 class="text-lg font-bold text-slate-100">Hybrid WebSocket TransportStream + Delta Sync</h2>
+          <div class="text-xs text-slate-400 space-y-2 leading-relaxed">
+            <p><strong class="text-slate-200">Original Design:</strong> Raw TCP sockets emitting unstructured ANSI strings; clients had to scrape text with regexes (Mudlet/TinTin++) to build health bars or maps.</p>
+            <p><strong class="text-slate-200">Modern Refactoring:</strong> Extend <code class="font-mono">Ranvier.TransportStream</code> over WebSockets on port 3000 (implemented live in this app!). Every tick and command emits both narrative ANSI text and structured JSON state deltas.</p>
+          </div>
+          <pre class="bg-[#090D16] border border-slate-800 rounded-lg p-3 text-[11px] font-mono text-slate-300 overflow-x-auto flex-1"><code>// Implemented in bundles/ranvier-core/server-events/web-server.js
+class WebSocketStream extends TransportStream {
+  write(message) {
+    this.ws.send(JSON.stringify({
+      type: 'terminal', text: message
+    }));
+  }
+  executeGoAhead() {
+    this.syncState(); // Pushes room, vitals, map &amp; quests
+  }
+}</code></pre>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Character / Account Switcher Modal -->
+  <div id="account-modal" class="fixed inset-0 bg-black/75 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
+    <div class="bg-[#0F172A] border border-slate-800 rounded-xl max-w-md w-full p-6 space-y-4">
+      <div class="flex items-center justify-between">
+        <h3 class="text-lg font-bold text-slate-100">Switch or Create Adventurer</h3>
+        <button onclick="closeAccountModal()" class="text-xs text-slate-400 hover:text-slate-200">Close</button>
+      </div>
+      <p class="text-xs text-slate-400">
+        Connect to the Ranvier AccountManager &amp; PlayerManager with an existing profile (<code class="font-mono text-slate-200">Admin</code>) or create a new character in real-time multiplayer.
+      </p>
+      <form onsubmit="handleAuthSubmit(event)" class="space-y-3">
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1">Character Name (3–20 chars)</label>
+          <input id="auth-username" type="text" value="Admin" required minlength="3" maxlength="20" class="w-full px-3 py-2 text-sm bg-[#090D16] border border-slate-700 rounded-lg text-slate-100 focus:outline-none focus:border-amber-400" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1">Class Archetype</label>
+          <select id="auth-class" class="w-full px-3 py-2 text-sm bg-[#090D16] border border-slate-700 rounded-lg text-slate-100 focus:outline-none focus:border-amber-400">
+            <option value="warrior">Warrior (High Strength &amp; Stamina)</option>
+            <option value="ranger">Ranger (High Agility &amp; Critical)</option>
+            <option value="arcanist">Arcanist (High Intellect &amp; Energy)</option>
+          </select>
+        </div>
+        <div class="flex items-center justify-end gap-2 pt-2">
+          <button type="button" onclick="closeAccountModal()" class="px-4 py-2 text-xs font-medium text-slate-300 hover:text-white">
+            Cancel
+          </button>
+          <button type="submit" class="px-4 py-2 text-xs font-semibold bg-amber-400 hover:bg-amber-300 text-slate-950 rounded-lg transition-colors">
+            Enter the Sanctum
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    let ws = null;
+    let currentState = null;
+    let commandHistory = [];
+    let historyIndex = -1;
+    let currentCredentials = { username: 'Admin', characterClass: 'warrior' };
+
+    // Convert ANSI escape codes & Ranvier tags into styled spans
+    function formatTerminalText(raw) {
+      if (!raw) return '';
+      let escaped = raw
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+
+      // Parse ANSI SGR codes emitted by Ranvier's sty package
+      const ansiMap = {
+        '1': '<span class="ansi-bold">',
+        '22': '</span>',
+        '31': '<span class="ansi-red">',
+        '32': '<span class="ansi-green">',
+        '33': '<span class="ansi-yellow">',
+        '34': '<span class="ansi-blue">',
+        '35': '<span class="ansi-magenta">',
+        '36': '<span class="ansi-cyan">',
+        '37': '<span class="ansi-white">',
+        '39': '</span>',
+        '0': '</span></span>',
+      };
+
+      escaped = escaped.replace(/\x1b\[([0-9;]+)m/g, (_, codes) => {
+        return codes.split(';').map(c => ansiMap[c] || '').join('');
+      });
+
+      // Also support inline Ranvier style tags if any remain unparsed
+      escaped = escaped
+        .replace(/&lt;b&gt;|&lt;bold&gt;/g, '<span class="ansi-bold">')
+        .replace(/&lt;\/b&gt;|&lt;\/bold&gt;/g, '</span>')
+        .replace(/&lt;(red|green|yellow|blue|magenta|cyan|white)&gt;/g, '<span class="ansi-$1">')
+        .replace(/&lt;\/(red|green|yellow|blue|magenta|cyan|white)&gt;/g, '</span>');
+
+      return escaped;
+    }
+
+    function appendTerminal(text) {
+      const container = document.getElementById('terminal-output');
+      const lines = String(text).split(/\r?\n/);
+      for (const line of lines) {
+        if (line === '') continue;
+        const div = document.createElement('div');
+        div.className = 'whitespace-pre-wrap break-words';
+        div.innerHTML = formatTerminalText(line);
+        container.appendChild(div);
+      }
+      while (container.children.length > 250) {
+        container.removeChild(container.firstChild);
+      }
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function connectWebSocket() {
+      const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      ws = new WebSocket(`${proto}//${window.location.host}`);
+
+      ws.onopen = () => {
+        document.getElementById('conn-status-label').textContent = 'WebSocket Connected';
+        document.getElementById('conn-status-label').className = 'font-medium text-emerald-400';
+        ws.send(JSON.stringify({
+          type: 'auth',
+          username: currentCredentials.username,
+          characterClass: currentCredentials.characterClass,
+        }));
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === 'terminal') {
+            appendTerminal(data.text);
+          } else if (data.type === 'state_sync') {
+            currentState = data;
+            renderHudState(data);
+          }
+        } catch (err) {
+          console.error('WS parse error:', err);
+        }
+      };
+
+      ws.onclose = () => {
+        document.getElementById('conn-status-label').textContent = 'Reconnecting...';
+        document.getElementById('conn-status-label').className = 'font-medium text-amber-400';
+        setTimeout(connectWebSocket, 2000);
+      };
+    }
+
+    function sendCmd(cmd) {
+      if (!cmd) return;
+      appendTerminal(`\x1b[1m\x1b[33m> ${cmd}\x1b[0m`);
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'command', command: cmd }));
+      }
+    }
+
+    function handleCommandSubmit(e) {
+      e.preventDefault();
+      const input = document.getElementById('command-input');
+      const val = input.value.trim();
+      if (!val) return;
+      commandHistory.unshift(val);
+      historyIndex = -1;
+      sendCmd(val);
+      input.value = '';
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const input = document.getElementById('command-input');
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          if (historyIndex + 1 < commandHistory.length) {
+            historyIndex++;
+            input.value = commandHistory[historyIndex];
+          }
+        } else if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          if (historyIndex > 0) {
+            historyIndex--;
+            input.value = commandHistory[historyIndex];
+          } else {
+            historyIndex = -1;
+            input.value = '';
+          }
+        }
+      });
+
+      connectWebSocket();
+      refreshEngineStatus();
+    });
+
+    function renderHudState(state) {
+      const { player, room, mapRooms, onlinePlayers } = state;
+      if (!player) return;
+
+      document.getElementById('hud-player-name').textContent = player.name;
+      const roleName = player.role === 2 ? 'Admin' : 'Adventurer';
+      const roomTitle = room ? room.title : 'Sanctum';
+      document.getElementById('hud-player-meta').textContent =
+        `Level ${player.level} ${player.playerClass.charAt(0).toUpperCase() + player.playerClass.slice(1)} · Role: ${roleName} · ${roomTitle}`;
+
+      const combatEl = document.getElementById('hud-combat-state');
+      if (player.inCombat) {
+        combatEl.textContent = `In Combat: ${player.combatTarget || 'Active'}`;
+        combatEl.className = 'text-xs font-semibold text-rose-400 tabular-nums';
+      } else {
+        combatEl.textContent = 'Status: Ready';
+        combatEl.className = 'text-xs font-medium text-emerald-400 tabular-nums';
+      }
+
+      // Vitals
+      const hp = player.attributes.health || { current: 100, max: 100 };
+      const en = player.attributes.energy || { current: 100, max: 100 };
+      const hpPct = Math.max(0, Math.min(100, Math.round((hp.current / hp.max) * 100)));
+      const enPct = Math.max(0, Math.min(100, Math.round((en.current / en.max) * 100)));
+      const xpPct = Math.max(0, Math.min(100, Math.round((player.experience / player.nextLevelXp) * 100)));
+
+      document.getElementById('hud-hp-text').textContent = `${hp.current} / ${hp.max}`;
+      document.getElementById('hud-hp-bar').style.width = `${hpPct}%`;
+      document.getElementById('hud-en-text').textContent = `${en.current} / ${en.max}`;
+      document.getElementById('hud-en-bar').style.width = `${enPct}%`;
+      document.getElementById('hud-xp-text').textContent = `${player.experience} / ${player.nextLevelXp} XP`;
+      document.getElementById('hud-xp-bar').style.width = `${xpPct}%`;
+
+      // Stats
+      document.getElementById('stat-str').textContent = player.attributes.strength ? player.attributes.strength.current : 15;
+      document.getElementById('stat-agi').textContent = player.attributes.agility ? player.attributes.agility.current : 12;
+      document.getElementById('stat-int').textContent = player.attributes.intellect ? player.attributes.intellect.current : 10;
+      document.getElementById('stat-sta').textContent = player.attributes.stamina ? player.attributes.stamina.current : 12;
+      document.getElementById('stat-arm').textContent = player.attributes.armor ? player.attributes.armor.current : 0;
+      document.getElementById('stat-crit').textContent = `${player.attributes.critical ? player.attributes.critical.current : 5}%`;
+
+      // Room header & contextual buttons
+      if (room) {
+        document.getElementById('header-room-title').textContent = room.title;
+        const c = room.coordinates || { x: 0, y: 0, z: 0 };
+        document.getElementById('header-coords').textContent = `[${c.x}, ${c.y}, ${c.z}]`;
+        document.getElementById('map-z-indicator').textContent = `Elevation Z: ${c.z}`;
+
+        const exitDirs = room.exits.map(e => e.direction);
+        document.getElementById('exits-summary').textContent =
+          `Exits: ${exitDirs.length ? exitDirs.join(', ') : 'none'}`;
+
+        ['north', 'south', 'east', 'west', 'up', 'down'].forEach(dir => {
+          const btn = document.getElementById(`btn-dir-${dir}`);
+          if (!btn) return;
+          if (exitDirs.includes(dir)) {
+            btn.disabled = false;
+            btn.className = 'px-2 py-2 text-xs font-mono font-semibold bg-slate-800 hover:bg-amber-400 hover:text-slate-950 text-slate-100 rounded-lg transition-colors whitespace-nowrap shrink-0';
+          } else {
+            btn.disabled = true;
+            btn.className = 'px-2 py-2 text-xs font-mono font-semibold bg-slate-900/40 text-slate-600 rounded-lg cursor-not-allowed whitespace-nowrap shrink-0';
+          }
+        });
+
+        // Contextual Room NPC & Item interaction buttons
+        const entitiesBar = document.getElementById('room-entities-bar');
+        entitiesBar.innerHTML = '';
+
+        room.npcs.forEach(npc => {
+          const kw = npc.keywords[0] || npc.name.split(' ')[0].toLowerCase();
+          const talkBtn = document.createElement('button');
+          talkBtn.onclick = () => sendCmd(`talk ${kw}`);
+          talkBtn.className = 'px-2.5 py-1 text-xs font-medium bg-slate-800 hover:bg-slate-700 text-amber-300 rounded transition-colors whitespace-nowrap shrink-0';
+          talkBtn.textContent = `Talk: ${npc.name}`;
+          entitiesBar.appendChild(talkBtn);
+
+          if (npc.combatable) {
+            const atkBtn = document.createElement('button');
+            atkBtn.onclick = () => sendCmd(`attack ${kw}`);
+            atkBtn.className = 'px-2.5 py-1 text-xs font-medium bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/30 rounded transition-colors whitespace-nowrap shrink-0';
+            atkBtn.textContent = `Attack ${npc.name} (${npc.health}/${npc.maxHealth} HP)`;
+            entitiesBar.appendChild(atkBtn);
+          }
+        });
+
+        room.items.forEach(item => {
+          const kw = item.keywords[0] || item.name.split(' ')[0].toLowerCase();
+          const getBtn = document.createElement('button');
+          getBtn.onclick = () => sendCmd(`get ${kw}`);
+          getBtn.className = 'px-2.5 py-1 text-xs font-medium bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 rounded transition-colors whitespace-nowrap shrink-0';
+          getBtn.textContent = `Pick Up: ${item.name}`;
+          entitiesBar.appendChild(getBtn);
+        });
+
+        if (!room.npcs.length && !room.items.length) {
+          entitiesBar.innerHTML = '<span class="text-slate-500">Quiet chamber — use compass exits to explore.</span>';
+        }
+      }
+
+      // Render 2D Coordinate Minimap
+      renderMinimap(room, mapRooms || []);
+
+      // Render Equipment & Inventory
+      const eqContainer = document.getElementById('hud-equipment-list');
+      const eqEntries = Object.entries(player.equipment || {});
+      if (!eqEntries.length) {
+        eqContainer.innerHTML = '<div class="text-slate-500">No weapons or armor equipped.</div>';
+      } else {
+        eqContainer.innerHTML = eqEntries.map(([slot, item]) => `
+          <div class="flex items-center justify-between p-2 bg-slate-900/80 border border-slate-800/80 rounded-lg">
+            <div>
+              <span class="text-amber-400 font-mono uppercase">[${slot}]</span>
+              <span class="font-medium text-slate-200 ml-1.5">${item.name}</span>
+            </div>
+            <button onclick="sendCmd('unequip ${slot}')" class="px-2 py-0.5 text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-300 rounded">
+              Unequip
+            </button>
+          </div>
+        `).join('');
+      }
+
+      document.getElementById('hud-inv-count').textContent = `${player.inventory.length} / 16`;
+      const invContainer = document.getElementById('hud-inventory-list');
+      if (!player.inventory.length) {
+        invContainer.innerHTML = '<div class="text-slate-500">Your backpack is empty.</div>';
+      } else {
+        invContainer.innerHTML = player.inventory.map(item => {
+          const kw = item.id || item.name.split(' ')[0].toLowerCase();
+          const canEquip = Boolean(item.metadata && item.metadata.slot);
+          const canUse = Boolean(item.metadata && item.metadata.usable);
+          return `
+            <div class="flex items-center justify-between gap-2 p-2 bg-slate-900/80 border border-slate-800/80 rounded-lg">
+              <span class="font-medium text-slate-200 truncate">${item.name}</span>
+              <div class="flex items-center gap-1 shrink-0">
+                ${canEquip ? `<button onclick="sendCmd('equip ${kw}')" class="px-2 py-0.5 text-[11px] bg-amber-400/20 hover:bg-amber-400/30 text-amber-300 rounded">Equip</button>` : ''}
+                ${canUse ? `<button onclick="sendCmd('use ${kw}')" class="px-2 py-0.5 text-[11px] bg-emerald-400/20 hover:bg-emerald-400/30 text-emerald-300 rounded">Use</button>` : ''}
+                <button onclick="sendCmd('drop ${kw}')" class="px-2 py-0.5 text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-400 rounded">Drop</button>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      // Render Quests
+      const questsContainer = document.getElementById('hud-quests-list');
+      if (!player.activeQuests || !player.activeQuests.length) {
+        questsContainer.innerHTML = `
+          <div class="p-3 bg-slate-900/70 rounded-lg space-y-2">
+            <div class="text-slate-300 font-medium">No Active Quests</div>
+            <p class="text-slate-400">Speak with Archivist Veyra in The White Sanctum of Limbo to begin your trials.</p>
+            <div class="flex gap-2 pt-1">
+              <button onclick="sendCmd('quest start 1')" class="px-2.5 py-1 bg-amber-400 text-slate-950 font-semibold rounded">Accept Quest 1</button>
+              <button onclick="sendCmd('quest start 2')" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded">Accept Quest 2</button>
+            </div>
+          </div>
+        `;
+      } else {
+        questsContainer.innerHTML = player.activeQuests.map(q => `
+          <div class="p-3 bg-slate-900/80 border border-slate-800 rounded-lg space-y-1.5">
+            <div class="flex items-center justify-between">
+              <span class="font-semibold text-amber-400">${q.title}</span>
+              <span class="font-mono tabular-nums text-cyan-400">${q.progress.percent}%</span>
+            </div>
+            <div class="text-slate-400">${q.progress.display}</div>
+            ${q.progress.percent >= 100 ? `
+              <button onclick="sendCmd('quest complete ${q.ref}')" class="mt-1 px-3 py-1 bg-emerald-500 text-slate-950 font-semibold rounded">
+                Turn In &amp; Claim Reward
+              </button>
+            ` : ''}
+          </div>
+        `).join('');
+      }
+
+      // Online players
+      if (onlinePlayers) {
+        document.getElementById('online-count-label').textContent =
+          `${onlinePlayers.length} ${onlinePlayers.length === 1 ? 'Player' : 'Players'} Online`;
+        document.getElementById('hud-online-list').innerHTML = onlinePlayers.map(p => `
+          <div class="flex items-center justify-between p-2 bg-slate-900/80 rounded-lg">
+            <span class="font-semibold text-emerald-400">${p.name}</span>
+            <span class="text-slate-400">Lv.${p.level} · ${p.room}</span>
+          </div>
+        `).join('');
+      }
+    }
+
+    function renderMinimap(currentRoom, mapRooms) {
+      const grid = document.getElementById('minimap-grid');
+      if (!grid || !currentRoom) return;
+
+      // 3x3 layout covering X: [-1, 0, 1], Y: [2, 1, 0] plus Z indicators
+      const slots = [
+        { x: -1, y: 2, z: 0, label: 'Spire (Up)', fallbackRef: 'limbo:spire' },
+        { x: 0,  y: 2, z: 0, label: 'Archive' },
+        { x: 1,  y: 2, z: -1, label: 'Crypt (Dn)', fallbackRef: 'limbo:crypt' },
+        { x: -1, y: 1, z: 0, label: 'Armory' },
+        { x: 0,  y: 1, z: 0, label: 'Courtyard' },
+        { x: 1,  y: 1, z: 0, label: 'Training' },
+        { x: -1, y: 0, z: 0, label: '' },
+        { x: 0,  y: 0, z: 0, label: 'Sanctum' },
+        { x: 1,  y: 0, z: 0, label: '' },
+      ];
+
+      grid.innerHTML = slots.map(slot => {
+        let matched = mapRooms.find(r =>
+          r.coordinates &&
+          r.coordinates.x === slot.x &&
+          r.coordinates.y === slot.y &&
+          r.coordinates.z === slot.z
+        );
+        if (!matched && slot.fallbackRef) {
+          matched = mapRooms.find(r => r.entityReference === slot.fallbackRef);
+        }
+
+        if (!matched) {
+          return `<div class="h-12 rounded bg-slate-950/40 border border-slate-900/40"></div>`;
+        }
+
+        const isCurrent = currentRoom.entityReference === matched.entityReference;
+        const exitObj = currentRoom.exits.find(e => e.roomId === matched.entityReference);
+        const clickHandler = exitObj
+          ? `onclick="sendCmd('${exitObj.direction}')"`
+          : isCurrent
+          ? `onclick="sendCmd('look')"`
+          : '';
+
+        return `
+          <button
+            ${clickHandler}
+            class="h-12 p-1.5 rounded-lg border text-left flex flex-col justify-between transition-colors ${
+              isCurrent
+                ? 'bg-amber-400/20 border-amber-400 text-amber-300 font-semibold'
+                : exitObj
+                ? 'bg-slate-900 hover:bg-slate-800 border-slate-700 text-slate-200 cursor-pointer'
+                : 'bg-slate-900/40 border-slate-800/70 text-slate-500 cursor-default'
+            }"
+          >
+            <span class="text-[11px] leading-tight truncate w-full">${slot.label || matched.title}</span>
+            <span class="text-[10px] font-mono tabular-nums opacity-75">
+              ${isCurrent ? 'YOU' : exitObj ? exitObj.direction.toUpperCase() : `${matched.npcCount} NPC`}
+            </span>
+          </button>
+        `;
+      }).join('');
+    }
+
+    async function refreshEngineStatus() {
+      try {
+        const res = await fetch('/api/status');
+        const data = await res.json();
+        if (data && data.counts) {
+          document.getElementById('metric-areas').textContent = data.counts.areas;
+          document.getElementById('metric-rooms').textContent = data.counts.rooms;
+          document.getElementById('metric-npcs').textContent = data.counts.npcs;
+          document.getElementById('metric-items').textContent = data.counts.items;
+          document.getElementById('metric-commands').textContent = data.counts.commands;
+          document.getElementById('metric-channels').textContent = data.counts.channels;
+        }
+        if (data && Array.isArray(data.rooms)) {
+          const atlas = document.getElementById('world-rooms-grid');
+          atlas.innerHTML = data.rooms.map(r => `
+            <div class="bg-[#0F172A] border border-slate-800 rounded-xl p-5 flex flex-col justify-between space-y-4">
+              <div class="space-y-2">
+                <div class="flex items-center justify-between text-xs font-mono text-slate-400 tabular-nums">
+                  <span>${r.ref}</span>
+                  <span>[${r.coordinates ? `${r.coordinates.x}, ${r.coordinates.y}, ${r.coordinates.z}` : '0, 0, 0'}]</span>
+                </div>
+                <h3 class="text-base font-bold text-slate-100">${r.title}</h3>
+                <div class="text-xs text-slate-400 space-y-1 pt-1">
+                  <div><strong class="text-slate-300">NPCs:</strong> ${r.npcs.length ? r.npcs.map(n => `${n.name} (Lv.${n.level})`).join(', ') : 'None'}</div>
+                  <div><strong class="text-slate-300">Items:</strong> ${r.items.length ? r.items.map(i => i.name).join(', ') : 'None'}</div>
+                  <div><strong class="text-slate-300">Exits:</strong> ${r.exits.map(e => `${e.direction} → ${e.roomId}`).join(' · ')}</div>
+                </div>
+              </div>
+              <button onclick="switchTab('play'); sendCmd('look');" class="w-full py-2 text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg transition-colors">
+                Return to Terminal View
+              </button>
+            </div>
+          `).join('');
+        }
+      } catch (e) {
+        console.error('Status fetch failed:', e);
+      }
+    }
+
+    function switchTab(tab) {
+      ['play', 'world', 'diagnostic', 'architecture'].forEach(t => {
+        const view = document.getElementById(`view-${t}`);
+        const nav = document.getElementById(`nav-${t}`);
+        if (t === tab) {
+          view.classList.remove('hidden');
+          nav.className = 'text-amber-400 underline underline-offset-8 decoration-2 whitespace-nowrap shrink-0 transition-colors';
+        } else {
+          view.classList.add('hidden');
+          nav.className = 'hover:text-slate-100 whitespace-nowrap shrink-0 transition-colors';
+        }
+      });
+      if (tab === 'world' || tab === 'diagnostic') {
+        refreshEngineStatus();
+      }
+    }
+
+    function switchHudSubtab(sub) {
+      ['inventory', 'quests', 'players'].forEach(s => {
+        const view = document.getElementById(`subview-${s}`);
+        const btn = document.getElementById(`subtab-${s}`);
+        if (s === sub) {
+          view.classList.remove('hidden');
+          btn.className = 'px-3 py-1.5 text-xs font-semibold rounded-md bg-slate-800 text-slate-100 transition-colors whitespace-nowrap shrink-0';
+        } else {
+          view.classList.add('hidden');
+          btn.className = 'px-3 py-1.5 text-xs font-semibold rounded-md text-slate-400 hover:text-slate-200 transition-colors whitespace-nowrap shrink-0';
+        }
+      });
+    }
+
+    function openAccountModal() {
+      const modal = document.getElementById('account-modal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeAccountModal() {
+      const modal = document.getElementById('account-modal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    function handleAuthSubmit(e) {
+      e.preventDefault();
+      const username = document.getElementById('auth-username').value.trim() || 'Admin';
+      const characterClass = document.getElementById('auth-class').value;
+      currentCredentials = { username, characterClass };
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({
+          type: 'auth',
+          username,
+          characterClass,
+        }));
+      }
+      closeAccountModal();
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,75 @@
+- id: rusty_sword
+  name: "Tempered Training Longsword"
+  roomDesc: "A tempered training longsword rests against a rack."
+  keywords: ["sword", "longsword", "tempered", "training", "blade"]
+  description: "A well-balanced steel longsword forged for recruits in the Hall of Blades."
+  type: WEAPON
+  metadata:
+    slot: "wield"
+    minDamage: 8
+    maxDamage: 15
+    quality: "common"
+
+- id: astral_blade
+  name: "Starforged Astral Greatsword"
+  roomDesc: "A starforged astral greatsword hums with celestially bound light."
+  keywords: ["astral", "blade", "greatsword", "starforged", "sword"]
+  description: "Constellations shimmer along the fuller of this weightless, razor-keen greatsword."
+  type: WEAPON
+  metadata:
+    slot: "wield"
+    minDamage: 16
+    maxDamage: 28
+    quality: "epic"
+
+- id: iron_shield
+  name: "Sanctum Kite Shield"
+  roomDesc: "A heavy Sanctum kite shield embossed with a silver compass lies here."
+  keywords: ["shield", "kite", "iron", "sanctum"]
+  description: "Forged from layered meteoric iron to deflect heavy blows."
+  type: ARMOR
+  metadata:
+    slot: "shield"
+    armor: 8
+    quality: "uncommon"
+
+- id: chain_hauberk
+  name: "Vanguard Chain Hauberk"
+  roomDesc: "A polished Vanguard chain hauberk is folded neatly on an armor stand."
+  keywords: ["chain", "hauberk", "armor", "vanguard", "chest"]
+  description: "Interlocking mithril-steel rings offering protection without sacrificing mobility."
+  type: ARMOR
+  metadata:
+    slot: "chest"
+    armor: 14
+    quality: "rare"
+
+- id: healing_draught
+  name: "Vial of Luminous Ambrosia"
+  roomDesc: "A crystal vial of luminous ambrosia glows softly on the floor."
+  keywords: ["vial", "potion", "draught", "ambrosia", "healing"]
+  description: "Restores 75 Health and 40 Energy when consumed with 'use vial'."
+  type: POTION
+  metadata:
+    healAmount: 75
+    energyAmount: 40
+    usable: true
+
+- id: void_shard
+  name: "Crystallized Void Shard"
+  roomDesc: "A jagged crystallized void shard pulses with violet resonance."
+  keywords: ["void", "shard", "crystal", "crystallized"]
+  description: "A fragment of condensed dimensional energy sought by Archivist Veyra."
+  type: OBJECT
+  metadata:
+    questItem: true
+
+- id: tome_of_wisdom
+  name: "Codex of the Ranvier Architects"
+  roomDesc: "An illuminated Codex of the Ranvier Architects floats above a brass lectern."
+  keywords: ["codex", "tome", "book", "wisdom", "architects"]
+  description: "Inscribed with the laws of event-driven MUD state machines, ticks, and bundles."
+  type: OBJECT
+  metadata:
+    xpBonus: 50
+    usable: true

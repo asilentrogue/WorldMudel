@@ -1,0 +1,5 @@
+{
+  "name": "RanvierMUD Engine & Web Client",
+  "description": "Node.js-based multiplayer MUD game engine refactored with a real-time WebSocket transport layer, interactive web client, and modern architecture inspector on port 3000.",
+  "requestFramePermissions": []
+}

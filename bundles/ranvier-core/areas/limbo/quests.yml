@@ -1,0 +1,45 @@
+- id: 1
+  title: "Trial of the Hall of Blades"
+  level: 1
+  description: >-
+    Prove your combat readiness by equipping a weapon in the Hall of Blades and
+    defeating the Clockwork Training Automaton.
+  completionMessage: >-
+    Archivist Veyra nods approvingly. "Well fought! You have mastered the rhythm
+    of combat in the Sanctum."
+  goals:
+    - type: KillGoal
+      config:
+        title: "Defeat the Clockwork Training Automaton"
+        npc: "limbo:training_automaton"
+        count: 1
+  rewards:
+    - type: ExperienceReward
+      config:
+        amount: 100
+    - type: ItemReward
+      config:
+        item: "limbo:healing_draught"
+
+- id: 2
+  title: "Echoes of the Catacombs"
+  level: 1
+  description: >-
+    Descend beneath the Obsidian Courtyard into the Echoing Catacombs and recover
+    a Crystallized Void Shard for Archivist Veyra.
+  completionMessage: >-
+    Archivist Veyra seals the Void Shard inside a containment prism. "The Sanctum
+    is in your debt, champion!"
+  goals:
+    - type: FetchGoal
+      config:
+        title: "Collect a Crystallized Void Shard"
+        item: "limbo:void_shard"
+        count: 1
+  rewards:
+    - type: ExperienceReward
+      config:
+        amount: 150
+    - type: ItemReward
+      config:
+        item: "limbo:astral_blade"

@@ -1,0 +1,114 @@
+- id: white
+  title: "The White Sanctum of Limbo"
+  coordinates: [0, 0, 0]
+  description: >-
+    Luminous alabaster pillars rise into a starlit vault above a polished obsidian
+    tessellation. Floating braziers cast warm amber light across an ancient astral
+    compass inlaid at the center of the chamber. To the north lies the Obsidian
+    Courtyard, while a spiral stair ascends toward the Watchtower Spire.
+  npcs:
+    - "limbo:archivist_veyra"
+  items:
+    - "limbo:healing_draught"
+  exits:
+    - roomId: "limbo:courtyard"
+      direction: north
+    - roomId: "limbo:spire"
+      direction: up
+
+- id: courtyard
+  title: "The Obsidian Courtyard"
+  coordinates: [0, 1, 0]
+  description: >-
+    Weathered basalt arches frame an open plaza suspended above swirling nebulae.
+    Banner standards flutter in an unseen breeze. Eastward clangs the Hall of Blades
+    Training Grounds, westward glows the Quartermaster's Armory, northward stands
+    the Astral Archive, and stone steps descend into the Echoing Catacombs.
+  npcs:
+    - "limbo:sentinel_vanguard"
+  exits:
+    - roomId: "limbo:white"
+      direction: south
+    - roomId: "limbo:training"
+      direction: east
+    - roomId: "limbo:armory"
+      direction: west
+    - roomId: "limbo:archive"
+      direction: north
+    - roomId: "limbo:crypt"
+      direction: down
+
+- id: training
+  title: "Hall of Blades Training Grounds"
+  coordinates: [1, 1, 0]
+  description: >-
+    Weapon racks lined with notched steel surround a sunken dueling ring etched
+    with protective wards. Clockwork sparring constructs hum with arcane energy,
+    awaiting challengers seeking to hone their martial prowess.
+  npcs:
+    - "limbo:sergeant_kael"
+    - "limbo:training_automaton"
+  items:
+    - "limbo:rusty_sword"
+  exits:
+    - roomId: "limbo:courtyard"
+      direction: west
+
+- id: armory
+  title: "Quartermaster's Armory"
+  coordinates: [-1, 1, 0]
+  description: >-
+    A roaringether-forge radiates heat across anvils and tempered breastplates.
+    Reinforced iron chests and racks of shields line the walls, meticulously
+    cataloged for expeditions into the lower catacombs.
+  npcs:
+    - "limbo:quartermaster_orin"
+  items:
+    - "limbo:iron_shield"
+    - "limbo:chain_hauberk"
+  exits:
+    - roomId: "limbo:courtyard"
+      direction: east
+
+- id: archive
+  title: "The Astral Archive"
+  coordinates: [0, 2, 0]
+  description: >-
+    Towering brass bookshelves curve toward a domed planetarium ceiling. Crystalline
+    codices hover beside reading lecterns, recording every realm, quest, and hero
+    that has passed through the Ranvier engine.
+  npcs:
+    - "limbo:chronicler_sol"
+  items:
+    - "limbo:tome_of_wisdom"
+  exits:
+    - roomId: "limbo:courtyard"
+      direction: south
+
+- id: crypt
+  title: "The Echoing Catacombs"
+  coordinates: [0, 1, -1]
+  description: >-
+    Cold violet mist coils around fractured sarcophagi and runic obelisks. Shadows
+    ripple along the damp stonework as restless void-born creatures prowl the
+    depths guarding crystallized shards of pure aether.
+  npcs:
+    - "limbo:void_stalker"
+  items:
+    - "limbo:void_shard"
+  exits:
+    - roomId: "limbo:courtyard"
+      direction: up
+
+- id: spire
+  title: "Watchtower Spire"
+  coordinates: [0, 0, 1]
+  description: >-
+    At the apex of the Sanctum, a circular parapet overlooks the boundless horizon
+    of the multiverse. A resonant beacon crystal pulses in sync with the server's
+    100ms heartbeat tick.
+  items:
+    - "limbo:astral_blade"
+  exits:
+    - roomId: "limbo:white"
+      direction: down
